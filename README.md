@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # KGNN-LS
 
 This repository is the implementation of KGNN-LS ([arXiv](http://arxiv.org/abs/1905.04413)):
