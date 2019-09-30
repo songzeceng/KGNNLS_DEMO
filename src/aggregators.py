@@ -58,7 +58,7 @@ class SumAggregator(Aggregator):
         self.session.run(tf.global_variables_initializer())
 
     def _call(self, self_vectors, neighbor_vectors, neighbor_relations, user_embeddings, masks):
-        '''
+        """
         合并neighbor_vectors、neighbor_relations和user_embeddings三个张量，
         将此结果和self_vectors张量相加，dropout正则化后，乘以权重矩阵，加上偏移量，最后输出用户对每个邻居电影的分数矩阵
         :param self_vectors: 电影随机向量，来源于电影索引矩阵
@@ -66,14 +66,14 @@ class SumAggregator(Aggregator):
         :param neighbor_relations: 用户关系向量，来源于实体-关系关联列表
         :param user_embeddings: 用户嵌入向量，来源于用户矩阵
         :param masks: 无用
-        :return: 根据电影向量，求出的用户对每种关系的分数矩阵
-        '''
+        :return: 根据电影向量，求出的用户对邻居的分数矩阵
+        """
         # [batch_size, -1, dim]
         neighbors_agg = self._mix_neighbor_vectors(neighbor_vectors, neighbor_relations, user_embeddings)
 
         # [-1, dim]
         output = tf.reshape(self_vectors + neighbors_agg, [-1, self.dim])
-        # 用户对邻居(电影)的分数向量 + 电影本身的随机向量
+        # 用户对邻居的分数向量 + 电影本身的随机向量
         output = tf.nn.dropout(output, keep_prob=1-self.dropout)
         output = tf.matmul(output, self.weights) + self.bias
 
@@ -83,37 +83,32 @@ class SumAggregator(Aggregator):
         return self.act(output)
 
     def _mix_neighbor_vectors(self, neighbor_vectors, neighbor_relations, user_embeddings):
-        '''
+        """
         点乘用户随机向量和关系向量，对每一行(每一个邻居的关系)求平均值后再求交叉熵正则化，得到用户关系评分向量；
         再将用户关系评分向量点乘邻居张量，对每一列(每一个维度)求均值后，做为合并的结果输出
 
         对于每一个用户而言：
             先求他对每一个邻居的关系的分数，
             再计算他对每一个邻居的分数，
-            最后计算每一个维度(共32个)下，他对16个邻居的关系的平均值
+            最后计算每一个维度(共32个)下，他对16个邻居的平均值
 
         :param neighbor_vectors: 邻居张量，来源于实体-实体关联列表
         :param neighbor_relations: 关系张量，来源于实体-关系关联列表
         :param user_embeddings: 用户嵌入向量张量，来源于用户矩阵
-        :return: 每个用户在每个维度下，对每种关系的平均分，[65536 * 1 * 32]
-        '''
-        avg = False
-        if not avg:
-            # [batch_size, 1, 1, dim]
-            user_embeddings_reshape = tf.reshape(user_embeddings, [self.batch_size, 1, 1, self.dim])
+        :return: 每个用户在每个维度下，对16个邻居的平均分，[65536 * 1 * 32]
+        """
+        # [batch_size, 1, 1, dim]
+        user_embeddings_reshape = tf.reshape(user_embeddings, [self.batch_size, 1, 1, self.dim])
 
-            # [batch_size, -1, n_neighbor]
-            user_relation_scores = tf.reduce_mean(user_embeddings_reshape * neighbor_relations, axis=-1)
-            user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
+        # [batch_size, -1, n_neighbor]
+        user_relation_scores = tf.reduce_mean(user_embeddings_reshape * neighbor_relations, axis=-1)
+        user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
 
-            # [batch_size, -1, n_neighbor, 1]
-            user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
+        # [batch_size, -1, n_neighbor, 1]
+        user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
 
-            # [batch_size, -1, dim]
-            neighbors_aggregated = tf.reduce_mean(user_relation_scores_normalized * neighbor_vectors, axis=2)
-        else:
-            # [batch_size, -1, dim]
-            neighbors_aggregated = tf.reduce_mean(neighbor_vectors, axis=2)
+        # [batch_size, -1, dim]
+        neighbors_aggregated = tf.reduce_mean(user_relation_scores_normalized * neighbor_vectors, axis=2)
 
         return neighbors_aggregated
 

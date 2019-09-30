@@ -202,7 +202,7 @@ class KGNN_LS(object):
 
         # L2 loss
         self.l2_loss = tf.nn.l2_loss(self.user_emb_matrix) + tf.nn.l2_loss(
-            self.entity_emb_matrix) + tf.nn.l2_loss(self.relation_emb_matrix)  # 对用户向量、实体邻居向量和实体关系项链的l2范式损失求和
+            self.entity_emb_matrix) + tf.nn.l2_loss(self.relation_emb_matrix)  # 对用户向量、实体邻居向量和实体关系向量的l2范式损失求和
         # for aggregator in self.aggregators:
         self.l2_loss = self.l2_loss + tf.nn.l2_loss(self.aggregator.weights)  # 加上聚集器里的权重
         self.loss = self.base_loss + self.l2_weight * self.l2_loss  # 默认l2权重是1e-7
@@ -237,7 +237,7 @@ class KGNN_LS(object):
         return auc, f1
 
     def get_scores(self, sess, feed_dict):
-        return sess.run([self.item_indices, self.scores], feed_dict)
+        return sess.run([self.item_indices, self.scores_normalized], feed_dict)
 
     def test_tensor(self, tensor):
         return self.session.run([tensor], self.get_feed_dict_test())

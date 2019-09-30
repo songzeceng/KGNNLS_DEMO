@@ -167,16 +167,16 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
         test_item_list = list(item_set - train_record[user])
         item_score_map = dict()
         start = 0
-        while start + batch_size <= len(test_item_list):
-            items, scores = model.get_scores(sess, {model.user_indices: [user] * batch_size,
-                                                    model.item_indices: test_item_list[start:start + batch_size]})
-            for item, score in zip(items, scores):
-                item_score_map[item] = score
-            start += batch_size
+        # while start + batch_size <= len(test_item_list):
+        #     items, scores = model.get_scores(sess, {model.user_indices: [user] * batch_size,
+        #                                             model.item_indices: test_item_list[start:start + batch_size]})
+        #     for item, score in zip(items, scores):
+        #         item_score_map[item] = score
+        #     start += batch_size
 
         # padding the last incomplete minibatch if exists
         if start < len(test_item_list):
-            # 用每个user做为user_indices、测试集中此用户没看过的电影集合(不够一批次的，用最后一个元素填满)填充KGNN-LS模型
+            # 用每个user做为user_indices、测试数据集(不够一批次的，用最后一个元素填满)填充KGNN-LS模型
             # 然后获取item_indices和用户电影评分向量
             items, scores = model.get_scores(
                 sess, {model.user_indices: [user] * batch_size,
@@ -204,7 +204,7 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
 
 def get_user_record(data, is_train):
     """
-    获取用户已看过的电影，排除测试集中被用户看过的电影
+    获取全部训练集数据和测试集中用户已看过的电影
     :param data: 数据集
     :param is_train: 数据集是否是训练集
     :return: 每个用户对应的训练集中全部电影和测试集中用户看过的电影，字典。
